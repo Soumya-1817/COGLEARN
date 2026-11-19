@@ -60,9 +60,11 @@ app = FastAPI(
 )
 
 # CORS Middleware Configuration
+cors_origins = settings.backend_cors_origins
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.backend_cors_origins,
+    allow_origins=cors_origins if cors_origins else ["*"],
+    allow_origin_regex=r"^https?://(localhost|.*\.onrender\.com|.*\.vercel\.app|.*\.netlify\.app)(:\d+)?$",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

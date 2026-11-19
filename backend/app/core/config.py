@@ -7,10 +7,18 @@ from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
+def _normalize_db_url(url: str) -> str:
+    if url.startswith("postgres://"):
+        return url.replace("postgres://", "postgresql+asyncpg://", 1)
+    elif url.startswith("postgresql://") and not url.startswith("postgresql+"):
+        return url.replace("postgresql://", "postgresql+asyncpg://", 1)
+    return url
+
+
 def _resolve_default_db_url() -> str:
     env_url = os.environ.get("DATABASE_URL")
     if env_url:
-        return env_url
+        return _normalize_db_url(env_url)
     # If postgresql port 5432 is not accepting connections, use local SQLite database for zero-config dev
     try:
         with socket.create_connection(("localhost", 5432), timeout=0.5):
@@ -71,6 +79,13 @@ class Settings(BaseSettings):
     SMTP_PASSWORD: str | None = Field(default=None)
     SMTP_FROM_EMAIL: str = Field(default="notifications@coglearn.internal")
     SMTP_FROM_NAME: str = Field(default="COGLEARN Platform")
+
+    @field_validator("DATABASE_URL", mode="before")
+    @classmethod
+    def normalize_database_url(cls, v: Any) -> str:
+        if isinstance(v, str):
+            return _normalize_db_url(v)
+        return v
 
     @field_validator("BACKEND_CORS_ORIGINS", mode="before")
     @classmethod
